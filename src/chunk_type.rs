@@ -9,11 +9,6 @@ const PRIVATE_BYTE: usize = 1;
 const RESERVED_BYTE: usize = 2;
 const SAFTE_TO_COPY_BYTE: usize = 3;
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct ChunkType {
-    code: [u8; 4],
-}
-
 #[derive(Debug)]
 pub enum IntoChunkTypeError {
     InvalidByteNumber,
@@ -31,6 +26,11 @@ impl fmt::Display for IntoChunkTypeError {
             }
         }
     }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct ChunkType {
+    code: [u8; 4],
 }
 
 impl ChunkType {
