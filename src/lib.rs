@@ -2,8 +2,8 @@ use std::error::Error;
 
 // TODO: check should use be first or mod
 mod args;
+mod chunk;
 mod chunk_type;
-mod chunks;
 mod commands;
 mod png;
 

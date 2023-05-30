@@ -7,25 +7,12 @@ const BIT_SHIFT_NUM: u8 = 5;
 const ANCILLARY_BYTE: usize = 0;
 const PRIVATE_BYTE: usize = 1;
 const RESERVED_BYTE: usize = 2;
-const SAFTE_TO_COPY_BYTE: usize = 3;
+const SAFE_TO_COPY_BYTE: usize = 3;
 
 #[derive(Debug)]
-pub enum IntoChunkTypeError {
-    InvalidByteNumber,
+pub enum ChunkTypeError {
+    InvalidLen,
     InvalidFormat,
-}
-
-impl fmt::Display for IntoChunkTypeError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            IntoChunkTypeError::InvalidByteNumber => {
-                write!(f, "Input data doesn't have 4 bytes")
-            }
-            IntoChunkTypeError::InvalidFormat => {
-                write!(f, "Input data is not in valid PNG chunk type format")
-            }
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -55,33 +42,30 @@ impl ChunkType {
     }
 
     pub fn is_safe_to_copy(&self) -> bool {
-        (self.code[SAFTE_TO_COPY_BYTE] & BIT_OF_INTEREST) >> BIT_SHIFT_NUM == 1
+        (self.code[SAFE_TO_COPY_BYTE] & BIT_OF_INTEREST) >> BIT_SHIFT_NUM == 1
     }
 }
 
 impl TryFrom<[u8; 4]> for ChunkType {
-    type Error = IntoChunkTypeError;
+    type Error = ChunkTypeError;
     fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
-        let chunk_type = ChunkType { code: value };
-        let is_valid_chunk_type = chunk_type
-            .code
+        match value
             .iter()
             .filter(|x| (65..90).contains(*x) || (97..122).contains(*x))
             .count()
-            == 4;
-        match is_valid_chunk_type {
-            true => Ok(chunk_type),
-            false => Err(IntoChunkTypeError::InvalidFormat),
+        {
+            4 => Ok(ChunkType { code: value }),
+            _ => Err(ChunkTypeError::InvalidFormat),
         }
     }
 }
 
 impl FromStr for ChunkType {
-    type Err = IntoChunkTypeError;
+    type Err = ChunkTypeError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let bytes = s.as_bytes();
         if bytes.len() != 4 {
-            return Err(IntoChunkTypeError::InvalidByteNumber);
+            return Err(ChunkTypeError::InvalidLen);
         }
 
         let four_bytes: [u8; 4] = [bytes[0], bytes[1], bytes[2], bytes[3]];
