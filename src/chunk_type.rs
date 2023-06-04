@@ -26,7 +26,11 @@ impl ChunkType {
     }
 
     pub fn is_valid(&self) -> bool {
-        self.is_reserved_bit_valid()
+        matches!(self
+            .code
+            .iter()
+            .filter(|x| x.is_ascii_lowercase() || x.is_ascii_uppercase())
+            .count(), 4 if self.is_reserved_bit_valid())
     }
 
     pub fn is_critical(&self) -> bool {
@@ -51,7 +55,7 @@ impl TryFrom<[u8; 4]> for ChunkType {
     fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
         match value
             .iter()
-            .filter(|x| (65..90).contains(*x) || (97..122).contains(*x))
+            .filter(|x| x.is_ascii_lowercase() || x.is_ascii_uppercase())
             .count()
         {
             4 => Ok(ChunkType { code: value }),
