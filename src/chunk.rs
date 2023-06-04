@@ -1,18 +1,33 @@
-use crate::chunk_type::ChunkType;
+use crate::chunk_type::{ChunkType, ChunkTypeError};
 use crc::{Crc, CRC_32_ISO_HDLC};
 use std::borrow::Borrow;
+use std::borrow::BorrowMut;
 use std::fmt;
+use std::mem;
 use std::str;
 
 #[derive(Debug)]
-pub enum IntoChunkError {
-    InvalidByteToString,
+pub enum ChunkError {
+    InvalidConversion(str::Utf8Error),
     InvalidLength,
-    InvalidChunkType,
     InvalidCrc,
     MismatchCrc,
+    InvalidChunkType(ChunkTypeError),
 }
 
+impl From<str::Utf8Error> for ChunkError {
+    fn from(item: str::Utf8Error) -> ChunkError {
+        ChunkError::InvalidConversion(item)
+    }
+}
+
+impl From<ChunkTypeError> for ChunkError {
+    fn from(item: ChunkTypeError) -> ChunkError {
+        ChunkError::InvalidChunkType(item)
+    }
+}
+
+#[derive(Debug)]
 pub struct Chunk {
     length: u32,
     chunk_type: ChunkType,
@@ -49,11 +64,10 @@ impl Chunk {
         self.crc
     }
 
-    pub fn data_as_string(&self) -> Result<String, IntoChunkError> {
-        match str::from_utf8(&self.data) {
-            Ok(msg) => Ok(msg.to_owned()),
-            Err(_) => Err(IntoChunkError::InvalidByteToString),
-        }
+    pub fn data_as_string(&self) -> Result<String, ChunkError> {
+        str::from_utf8(&self.data)
+            .map(|s| s.to_owned())
+            .map_err(|e| ChunkError::InvalidConversion(e))
     }
 
     pub fn as_bytes(&self) -> Vec<u8> {
@@ -69,64 +83,46 @@ impl Chunk {
 }
 
 impl TryFrom<&[u8]> for Chunk {
-    type Error = IntoChunkError;
+    type Error = ChunkError;
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        let length_vec: Vec<_> = value
-            .iter()
-            .enumerate()
-            .filter(|&(i, _)| std::ops::Range { start: 0, end: 4 }.contains(&i))
-            .map(|(_, e)| *e)
-            .collect();
-        let length = match length_vec.try_into() {
-            Ok(length) => u32::from_be_bytes(length),
-            Err(_) => return Err(IntoChunkError::InvalidLength),
-        };
+        let mut value_iter = value.iter().copied();
 
-        let chunk_type_vec: Vec<_> = value
-            .iter()
-            .enumerate()
-            .filter(|&(i, _)| std::ops::Range { start: 4, end: 8 }.contains(&i))
-            .map(|(_, e)| *e)
-            .collect();
-        let chunk_type_bytes: [u8; 4] = chunk_type_vec.try_into().unwrap(); // IMPROVE: this might be a potential issue
-        let chunk_type = match ChunkType::try_from(chunk_type_bytes) {
-            Ok(chunk_type) => chunk_type,
-            Err(_) => return Err(IntoChunkError::InvalidChunkType),
-        };
+        let length = u32::from_be_bytes(
+            value_iter
+                .borrow_mut()
+                .take(mem::size_of::<u32>())
+                .collect::<Vec<u8>>()
+                .try_into()
+                .map_err(|_| ChunkError::InvalidLength)?,
+        );
 
-        let data: Vec<_> = value
-            .iter()
-            .enumerate()
-            .filter(|&(i, _)| {
-                std::ops::Range {
-                    start: 8,
-                    end: 8 + length as usize,
-                }
-                .contains(&i)
-            })
-            .map(|(_, e)| *e)
-            .collect();
+        let chunk_type = ChunkType::try_from(
+            std::convert::TryInto::<[u8; 4]>::try_into(
+                value_iter
+                    .borrow_mut()
+                    .take(mem::size_of::<ChunkType>())
+                    .collect::<Vec<u8>>(),
+            )
+            .map_err(|_| ChunkError::InvalidChunkType(ChunkTypeError::InvalidLen))?,
+        )?;
 
-        let crc_vec: Vec<_> = value
-            .iter()
-            .enumerate()
-            .filter(|&(i, _)| {
-                std::ops::Range {
-                    start: 8 + length as usize,
-                    end: 8 + 4 + length as usize,
-                }
-                .contains(&i)
-            })
-            .map(|(_, e)| *e)
-            .collect();
-        let crc = match crc_vec.try_into() {
-            Ok(crc) => u32::from_be_bytes(crc),
-            Err(_) => return Err(IntoChunkError::InvalidCrc),
-        };
+        let data = value_iter
+            .borrow_mut()
+            .take(length as usize)
+            .collect::<Vec<u8>>();
+
+        let crc = u32::from_be_bytes(
+            value_iter
+                .borrow_mut()
+                .take(mem::size_of::<u32>())
+                .collect::<Vec<u8>>()
+                .try_into()
+                .map_err(|_| ChunkError::InvalidCrc)?,
+        );
 
         let chunk = Self::new(chunk_type, data);
         if chunk.crc != crc {
-            return Err(IntoChunkError::MismatchCrc);
+            return Err(ChunkError::MismatchCrc);
         }
 
         Ok(chunk)
