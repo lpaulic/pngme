@@ -1,3 +1,10 @@
+/*
+    TODO: general cleanup
+        - error name from ConfigError to something more appropriate
+        - move config to another crate/module
+        - combine args and commands
+*/
+
 mod args;
 mod chunk;
 mod chunk_type;
@@ -9,13 +16,19 @@ use clap::Parser;
 
 #[derive(Debug)]
 pub enum ConfigError {
-    UnsupportedArgument,
     ArgumentParsing(clap::Error),
+    CommandExecution(commands::CommandError),
 }
 
 impl From<clap::Error> for ConfigError {
     fn from(item: clap::Error) -> ConfigError {
         ConfigError::ArgumentParsing(item)
+    }
+}
+
+impl From<commands::CommandError> for ConfigError {
+    fn from(item: commands::CommandError) -> ConfigError {
+        ConfigError::CommandExecution(item)
     }
 }
 
@@ -25,6 +38,7 @@ pub struct Config {
 
 impl Config {
     pub fn build(args: impl Iterator<Item = String>) -> Result<Config, ConfigError> {
+        // TODO: handle usage/error message and help, error message is now a ugly JSON
         Ok(Config {
             args: PngMeArgs::try_parse_from(args)?,
         })
@@ -33,29 +47,10 @@ impl Config {
 
 pub fn run(config: Config) -> Result<(), ConfigError> {
     match config.args {
-        PngMeArgs::Encode(encode) => {
-            println!("File path: {}", encode.file_path.display());
-            println!("Chunk type: {}", encode.chunk_type);
-            println!("Message: {}", encode.message);
-            println!(
-                "Output file path: {}",
-                match encode.output_file_path {
-                    Some(p) => p.display().to_string(),
-                    None => "n/a".to_string(),
-                }
-            );
-        }
-        PngMeArgs::Decode(decode) => {
-            println!("File path: {}", decode.file_path.display());
-            println!("Chunk type: {}", decode.chunk_type);
-        }
-        PngMeArgs::Remove(remove) => {
-            println!("File path: {}", remove.file_path.display());
-            println!("Chunk type: {}", remove.chunk_type);
-        }
-        PngMeArgs::Print(print) => {
-            println!("File path: {}", print.file_path.display());
-        }
+        PngMeArgs::Encode(args) => commands::encode(args)?,
+        PngMeArgs::Decode(args) => commands::decode(args)?,
+        PngMeArgs::Remove(args) => commands::remove(args)?,
+        PngMeArgs::Print(args) => commands::print_chunks(args)?,
     };
 
     Ok(())
