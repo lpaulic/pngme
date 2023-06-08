@@ -5,6 +5,7 @@ use std::path::PathBuf;
 #[command(name = "pngme")]
 #[command(bin_name = "pngme")]
 #[command(author, version, about, long_about = None)]
+#[command(arg_required_else_help = true)]
 pub enum PngMeArgs {
     Encode(EncodeArgs),
     Decode(DecodeArgs),

@@ -1,6 +1,7 @@
 use crate::chunk::{Chunk, ChunkError};
 use crate::chunk_type::{ChunkType, ChunkTypeError};
 use std::borrow::BorrowMut;
+use std::error;
 use std::fmt;
 use std::mem;
 use std::str::FromStr;
@@ -11,18 +12,41 @@ pub type Result<T> = std::result::Result<T, PngError>;
 pub enum PngError {
     NotFoundChunk,
     InvalidHeader,
-    InvalidChunk(ChunkError),
+    Chunk(ChunkError),
 }
 
 impl From<ChunkError> for PngError {
     fn from(item: ChunkError) -> Self {
-        PngError::InvalidChunk(item)
+        PngError::Chunk(item)
     }
 }
 
 impl From<ChunkTypeError> for PngError {
     fn from(item: ChunkTypeError) -> Self {
-        PngError::InvalidChunk(ChunkError::InvalidChunkType(item))
+        PngError::Chunk(ChunkError::ChunkType(item))
+    }
+}
+
+impl fmt::Display for PngError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            PngError::Chunk(ref err) => write!(f, "Chunk error: {}", err),
+            PngError::InvalidHeader => write!(
+                f,
+                "Invalid header for PNG. Check PNG. Check PNG Specification for more details."
+            ),
+            PngError::NotFoundChunk => write!(f, "Cannot find chunk with specified ChunkType."),
+        }
+    }
+}
+
+impl error::Error for PngError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match *self {
+            PngError::Chunk(ref err) => Some(err),
+            PngError::InvalidHeader => None,
+            PngError::NotFoundChunk => None,
+        }
     }
 }
 
@@ -56,6 +80,7 @@ impl Png {
         Ok(self.chunk_list.remove(index))
     }
 
+    #[allow(dead_code)]
     pub fn header(&self) -> &[u8; 8] {
         self.header
     }

@@ -2,6 +2,8 @@ use crate::args::{DecodeArgs, EncodeArgs, PrintArgs, RemoveArgs};
 use crate::chunk::{Chunk, ChunkError};
 use crate::chunk_type::{ChunkType, ChunkTypeError};
 use crate::png::{Png, PngError};
+use std::error;
+use std::fmt;
 use std::fs;
 use std::io::Error;
 use std::str::FromStr;
@@ -33,7 +35,27 @@ impl From<ChunkError> for CommandError {
 
 impl From<ChunkTypeError> for CommandError {
     fn from(item: ChunkTypeError) -> CommandError {
-        CommandError::Chunk(ChunkError::InvalidChunkType(item))
+        CommandError::Chunk(ChunkError::ChunkType(item))
+    }
+}
+
+impl fmt::Display for CommandError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            CommandError::Filesystem(ref err) => write!(f, "Filesystem error: {}", err),
+            CommandError::Png(ref err) => write!(f, "Png error: {}", err),
+            CommandError::Chunk(ref err) => write!(f, "Chunk error: {}", err),
+        }
+    }
+}
+
+impl error::Error for CommandError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match *self {
+            CommandError::Filesystem(ref err) => Some(err),
+            CommandError::Png(ref err) => Some(err),
+            CommandError::Chunk(ref err) => Some(err),
+        }
     }
 }
 
@@ -43,7 +65,7 @@ pub fn encode(args: EncodeArgs) -> Result<(), CommandError> {
     let chunk_type = ChunkType::from_str(&args.chunk_type)?;
 
     if !chunk_type.is_valid() {
-        return Err(CommandError::Chunk(ChunkError::InvalidChunkType(
+        return Err(CommandError::Chunk(ChunkError::ChunkType(
             ChunkTypeError::InvalidFormat,
         )));
     }
