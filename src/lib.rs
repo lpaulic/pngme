@@ -1,7 +1,24 @@
+/*!
+ * # PNGme binary crate
+ *
+ * Main crate that executes the PNGme application.
+ * Users are able to invoke the following operations:
+ * - encode
+ * - decode
+ * - remove
+ * - print
+ *
+ */
+
+/// Args crate used as module
 mod args;
+/// Chunk crate used as module
 mod chunk;
+/// Chunk type crate used as module
 mod chunk_type;
+/// Commands crate used as module
 mod commands;
+/// PNG crate used as module
 mod png;
 
 use args::PngMeArgs;
@@ -45,6 +62,9 @@ impl error::Error for ConfigError {
     }
 }
 
+/**
+ * Structure to hold the application configuration. Configuration is extracted from command line arguments
+ */
 pub struct Config {
     args: PngMeArgs,
 }
@@ -57,6 +77,9 @@ impl Config {
     }
 }
 
+/**
+ * Interface to the executable crate to run the application based on the configuration
+ */
 pub fn run(config: Config) -> Result<(), ConfigError> {
     match config.args {
         PngMeArgs::Encode(args) => commands::encode(args)?,

@@ -1,3 +1,10 @@
+/*!
+ * # Chunk type crate
+ *
+ * Defines the chunk type as specified in [PNG specification](http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html)
+ *
+ */
+
 use std::error;
 use std::fmt;
 use std::str;

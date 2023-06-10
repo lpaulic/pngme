@@ -1,3 +1,10 @@
+/*!
+ * # Chunk crate
+ *
+ * Defines the chunk as specified in [PNG specification](http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html)
+ *
+ */
+
 use crate::chunk_type::{ChunkType, ChunkTypeError};
 use crc::{Crc, CRC_32_ISO_HDLC};
 use std::borrow::Borrow;
