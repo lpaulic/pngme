@@ -1,3 +1,4 @@
+use std::error;
 use std::fmt;
 use std::str;
 use std::str::FromStr;
@@ -13,6 +14,24 @@ const SAFE_TO_COPY_BYTE: usize = 3;
 pub enum ChunkTypeError {
     InvalidLen,
     InvalidFormat,
+}
+
+impl fmt::Display for ChunkTypeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ChunkTypeError::InvalidLen => write!(f, "Invalid length of the chunk type byte."),
+            ChunkTypeError::InvalidFormat => write!(f, "Invalid format of the chunk type byte."),
+        }
+    }
+}
+
+impl error::Error for ChunkTypeError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match *self {
+            ChunkTypeError::InvalidLen => None,
+            ChunkTypeError::InvalidFormat => None,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -33,18 +52,22 @@ impl ChunkType {
             .count(), 4 if self.is_reserved_bit_valid())
     }
 
+    #[allow(dead_code)] // NOTE: intentionally, not used for now
     pub fn is_critical(&self) -> bool {
         (self.code[ANCILLARY_BYTE] & BIT_OF_INTEREST) >> BIT_SHIFT_NUM == 0
     }
 
+    #[allow(dead_code)] // NOTE: intentionally, not used for now
     pub fn is_public(&self) -> bool {
         (self.code[PRIVATE_BYTE] & BIT_OF_INTEREST) >> BIT_SHIFT_NUM == 0
     }
 
+    #[allow(dead_code)] // NOTE: intentionally, not used for now
     pub fn is_reserved_bit_valid(&self) -> bool {
         (self.code[RESERVED_BYTE] & BIT_OF_INTEREST) >> BIT_SHIFT_NUM == 0
     }
 
+    #[allow(dead_code)] // NOTE: intentionally, not used for now
     pub fn is_safe_to_copy(&self) -> bool {
         (self.code[SAFE_TO_COPY_BYTE] & BIT_OF_INTEREST) >> BIT_SHIFT_NUM == 1
     }

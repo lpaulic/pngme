@@ -2,28 +2,56 @@ use crate::chunk_type::{ChunkType, ChunkTypeError};
 use crc::{Crc, CRC_32_ISO_HDLC};
 use std::borrow::Borrow;
 use std::borrow::BorrowMut;
+use std::error;
 use std::fmt;
 use std::mem;
 use std::str;
 
 #[derive(Debug)]
 pub enum ChunkError {
-    InvalidConversion(str::Utf8Error),
+    Conversion(str::Utf8Error),
     InvalidLength,
     InvalidCrc,
     MismatchCrc,
-    InvalidChunkType(ChunkTypeError),
+    ChunkType(ChunkTypeError),
 }
 
 impl From<str::Utf8Error> for ChunkError {
     fn from(item: str::Utf8Error) -> ChunkError {
-        ChunkError::InvalidConversion(item)
+        ChunkError::Conversion(item)
     }
 }
 
 impl From<ChunkTypeError> for ChunkError {
     fn from(item: ChunkTypeError) -> ChunkError {
-        ChunkError::InvalidChunkType(item)
+        ChunkError::ChunkType(item)
+    }
+}
+
+impl fmt::Display for ChunkError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ChunkError::Conversion(ref err) => write!(f, "Utf8 error: {}", err),
+            ChunkError::ChunkType(ref err) => write!(f, "ChunkType error: {}", err),
+            ChunkError::InvalidLength => write!(f, "Invalid length of the chunk."),
+            ChunkError::InvalidCrc => write!(f, "Invalid CRC of the chunk data."),
+            ChunkError::MismatchCrc => write!(
+                f,
+                "Calculated chunk data CRC doesn't match the provided CRC for the same chunk data."
+            ),
+        }
+    }
+}
+
+impl error::Error for ChunkError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match *self {
+            ChunkError::Conversion(ref err) => Some(err),
+            ChunkError::ChunkType(ref err) => Some(err),
+            ChunkError::InvalidLength => None,
+            ChunkError::InvalidCrc => None,
+            ChunkError::MismatchCrc => None,
+        }
     }
 }
 
@@ -64,10 +92,11 @@ impl Chunk {
         self.crc
     }
 
+    #[allow(dead_code)] // NOTE: intentionally, not used for now
     pub fn data_as_string(&self) -> Result<String, ChunkError> {
         str::from_utf8(&self.data)
             .map(|s| s.to_owned())
-            .map_err(|e| ChunkError::InvalidConversion(e))
+            .map_err(ChunkError::Conversion)
     }
 
     pub fn as_bytes(&self) -> Vec<u8> {
@@ -103,7 +132,7 @@ impl TryFrom<&[u8]> for Chunk {
                     .take(mem::size_of::<ChunkType>())
                     .collect::<Vec<u8>>(),
             )
-            .map_err(|_| ChunkError::InvalidChunkType(ChunkTypeError::InvalidLen))?,
+            .map_err(|_| ChunkError::ChunkType(ChunkTypeError::InvalidLen))?,
         )?;
 
         let data = value_iter
