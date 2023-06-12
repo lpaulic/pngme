@@ -1,3 +1,11 @@
+/*!
+ * # PNG crate
+ *
+ * Defines the PNG file representation as defined in [PNG specification](http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html).
+ * Utilizes tha chunk type and chunk crates.
+ *
+ */
+
 use crate::chunk::{Chunk, ChunkError};
 use crate::chunk_type::{ChunkType, ChunkTypeError};
 use std::borrow::BorrowMut;

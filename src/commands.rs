@@ -1,3 +1,10 @@
+/*!
+ * # Command crate
+ *
+ * Defines the implementation for the command line arguments.
+ *
+ */
+
 use crate::args::{DecodeArgs, EncodeArgs, PrintArgs, RemoveArgs};
 use crate::chunk::{Chunk, ChunkError};
 use crate::chunk_type::{ChunkType, ChunkTypeError};
